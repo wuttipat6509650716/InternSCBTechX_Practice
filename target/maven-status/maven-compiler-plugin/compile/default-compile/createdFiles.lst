@@ -1,0 +1,5 @@
+com/example/demo/LoadDatabase.class
+com/example/demo/DemoApplication.class
+com/example/demo/Storage.class
+com/example/demo/StorageRepository.class
+com/example/demo/DemoController.class
