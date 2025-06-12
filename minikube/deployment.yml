@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: mydemoapp
-        image: myacrnametepratice.azurecr.io/mydemoapp:latest
+        image: my-demo-app-pipeline
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
