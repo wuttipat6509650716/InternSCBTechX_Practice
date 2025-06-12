@@ -1,0 +1,53 @@
+#ขั้นตอนที่ 1: เลือก Base Image
+# เปลี่ยนจาก jdk11 เป็น jdk21 ตามที่ต้องการ
+FROM jenkins/inbound-agent:latest-jdk21
+
+# ขั้นตอนที่ 2: สลับไปใช้สิทธิ์ Root เพื่อติดตั้งโปรแกรมต่างๆ
+# การติดตั้งโปรแกรมใน Linux ส่วนใหญ่ต้องใช้สิทธิ์ผู้ดูแลระบบ (root)
+USER root
+
+# ขั้นตอนที่ 3: ติดตั้งเครื่องมือพื้นฐานและ Git
+# - apt-get update: อัปเดตรายการแพ็กเกจเพื่อให้ได้เวอร์ชันล่าสุด
+# - apt-get install -y: ติดตั้งโปรแกรมต่างๆ โดย -y คือการตอบ Yes อัตโนมัติ
+#   - git: สำหรับดึงซอร์สโค้ดจาก GitHub
+#   - lsb-release: ใช้สำหรับดึงชื่อเวอร์ชันของ OS (จำเป็นสำหรับติดตั้ง Docker)
+#   - curl, gnupg, ca-certificates: เครื่องมือพื้นฐานที่จำเป็นสำหรับการติดตั้ง Docker และ Kubectl
+RUN apt-get update && apt-get install -y \
+    git \
+    lsb-release \
+    curl \
+    gnupg \
+    ca-certificates
+
+# ขั้นตอนที่ 4: ติดตั้ง Maven
+# ติดตั้ง Maven สำหรับใช้ build โปรเจค Java
+RUN apt-get install -y maven
+
+# ขั้นตอนที่ 5: ติดตั้ง Docker CLI (สำหรับทำ Docker-in-Docker)
+# เราจะติดตั้งเฉพาะ Command Line Interface (CLI) ของ Docker เท่านั้น ไม่ได้ติดตั้ง Docker Engine ทั้งหมด
+# เพื่อให้ Agent ของเราสามารถส่งคำสั่งไปให้ Docker Engine ของเครื่อง Host ได้ผ่าน Socket
+# 1. สร้างโฟลเดอร์สำหรับเก็บ GPG key ของ Docker
+RUN install -m 0755 -d /etc/apt/keyrings
+# 2. ดาวน์โหลด GPG key ของ Docker มาติดตั้ง เพื่อยืนยันว่าแพ็กเกจที่จะติดตั้งนั้นปลอดภัย
+RUN curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+# 3. เพิ่ม Docker repository เข้าไปในรายการ source list ของ apt
+RUN echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \
+  $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+# 4. อัปเดตรายการแพ็กเกจอีกครั้ง และติดตั้ง docker-ce-cli
+RUN apt-get update && apt-get install -y docker-ce-cli
+
+# ขั้นตอนที่ 6: ติดตั้ง Kubectl
+# Kubectl เป็นเครื่องมือสำหรับสั่งการ Kubernetes Cluster
+# 1. ดาวน์โหลด Kubectl เวอร์ชันล่าสุดสำหรับ Linux (amd64)
+RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+# 2. ย้ายไฟล์ kubectl ไปไว้ที่ /usr/local/bin/kubectl ซึ่งเป็น path มาตรฐาน และกำหนด permission ให้สามารถรันได้
+RUN install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+
+# ขั้นตอนที่ 7: ทำความสะอาด
+# ลบไฟล์ที่ไม่จำเป็นออกไปเพื่อลดขนาดของ Image
+RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# ขั้นตอนที่ 8: สลับกลับไปใช้ User jenkins
+# เพื่อความปลอดภัย เราไม่ควรให้ Agent รันด้วยสิทธิ์ root
+USER jenkins
