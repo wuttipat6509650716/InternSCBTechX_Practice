@@ -15,7 +15,7 @@ spec:
       containers:
       - name: mydemoapp
         image: my-demo-app-pipeline
-        imagePullPolicy: Always
+        imagePullPolicy: Never
         ports:
         - containerPort: 8080
 ---
