@@ -1,0 +1,52 @@
+# Default values for my-helm-app.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 2 # จำนวน replicas สำหรับ mydemoapp
+
+mainApp:
+  name: tepraticeminikube # ชื่อของ Deployment หลัก
+  image:
+    repository: mydemoapp
+    tag: latest
+    pullPolicy: Always
+  containerPort: 8080
+
+service:
+  name: demoapp-cluster # ชื่อของ Service สำหรับ mydemoapp
+  type: ClusterIP
+  port: 80
+  targetPort: 8080 # ควรตรงกับ containerPort ของ mainApp
+
+fooApp:
+  name: foo-app # ชื่อของ foo-app Deployment
+  image:
+    repository: kicbase/echo-server
+    tag: "1.0"
+  containerPort: 8080 # พอร์ตที่ foo-app เปิดอยู่
+
+fooService:
+  name: foo-service # ชื่อของ Service สำหรับ foo-app
+  port: 8080
+  targetPort: 8080 # ควรตรงกับ containerPort ของ fooApp
+
+ingress:
+  enabled: true # เปิดใช้งาน Ingress หรือไม่
+  className: nginx # Ingress Class Name (minikube มักใช้ nginx)
+  host: "pratice.com"
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/use-regex: "true"
+  paths:
+    # Path สำหรับ mydemoapp (backend: demoapp-cluster)
+    - path: /home
+      pathType: Prefix
+      service:
+        name: demoapp-cluster
+        port: 80
+    # Path สำหรับ foo-app (backend: foo-service)
+    - path: /foo
+      pathType: Prefix
+      service:
+        name: foo-service
+        port: 8080

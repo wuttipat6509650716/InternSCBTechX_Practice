@@ -1,0 +1,21 @@
+controller:
+  serviceType: NodePort
+  jenkinsUrl: http://jenkins.default.svc.cluster.local:8080
+  podSecurityContext:
+    fsGroup: 1000
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "512Mi"
+    limits:
+      cpu: "1"
+      memory: "1Gi"
+
+agent:
+  enabled: true
+  kubernetes:
+    # ไม่ต้องกำหนด podTemplates ที่นี่ เราจะไปกำหนดใน Jenkinsfile แทนเพื่อความยืดหยุ่น
+    jenkinsUrl: http://jenkins.default.svc.cluster.local:8080
+    serviceAccount: default
+    # เราจะใช้ Service Account ของ Namespace 'default'
+    # ใน production ควรสร้าง Service Account แยกสำหรับ Jenkins
