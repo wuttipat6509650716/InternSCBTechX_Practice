@@ -1,0 +1,69 @@
+pipeline {
+    agent {
+        label 'agent-eiei'
+    }
+
+    environment {
+        DOCKER_IMAGE_NAME = "my-demo-app-pipeline"
+        HELM_RELEASE_NAME = "my-demo-app"
+        HELM_CHART_PATH   = "helm/my-app"
+    }
+
+    stages {
+        stage('0. Prerequisites Check') {
+            steps {
+                echo 'Checking for required tools...'
+                sh 'git --version'
+                sh 'mvn -v'
+                sh 'docker --version'
+                sh 'helm version'
+                echo 'All required tools are installed.'
+            }
+        }
+
+        stage('1. Checkout Code') {
+            steps {
+                echo 'กำลังดึงซอร์สโค้ดล่าสุดจาก GitHub...'
+                git url: 'https://github.com/wuttipat6509650716/azure_mypratice.git', branch: 'main'
+            }
+        }
+
+        stage('2. Build Application & Docker Image') {
+            steps {
+                echo 'Connecting to Minikube Docker daemon...'
+                sh 'eval $(minikube -p minikube docker-env)'
+                
+                echo 'กำลัง Build โปรเจคและสร้างไฟล์ .jar ด้วย Maven...'
+                sh "mvn clean package"
+
+                echo "กำลังสร้าง Docker Image: ${DOCKER_IMAGE_NAME}:latest"
+                sh "docker build -t ${DOCKER_IMAGE_NAME}:latest ."
+            }
+        }
+
+        stage('3. Deploy with Helm') {
+            steps {
+                echo "Deploying or upgrading Helm release: ${HELM_RELEASE_NAME}..."
+                sh """
+                    helm upgrade --install ${HELM_RELEASE_NAME} ${HELM_CHART_PATH} \\
+                         --set image.repository=${DOCKER_IMAGE_NAME} \\
+                         --set image.tag=latest \\
+                         --wait
+                """
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'Pipeline สิ้นสุดการทำงาน...'
+        }
+        success {
+            echo 'Pipeline สำเร็จ!'
+            echo "Helm release '${HELM_RELEASE_NAME}' has been deployed successfully."
+        }
+        failure {
+            echo 'Pipeline ล้มเหลว!'
+        }
+    }
+}
