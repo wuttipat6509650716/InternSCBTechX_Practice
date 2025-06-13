@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  # ใช้ชื่อ Service จาก values.yaml
+  name: {{ .Values.service.name }}
+  labels:
+    app: {{ .Values.mainApp.name }}
+spec:
+  # กำหนดประเภทของ Service จาก values.yaml
+  type: {{ .Values.service.type }}
+  selector:
+    # เลือก Pods ที่มี label ตรงกับของ mainApp
+    app: {{ .Values.mainApp.name }}
+  ports:
+    - protocol: TCP
+      # กำหนด port และ targetPort จาก values.yaml
+      port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}

@@ -1,0 +1,27 @@
+# templates/demo-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  # ใช้ชื่อจาก values.yaml สำหรับ Deployment หลัก
+  name: {{ .Values.mainApp.name }}
+  labels:
+    app: {{ .Values.mainApp.name }}
+spec:
+  # กำหนดจำนวน replicas จาก values.yaml
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.mainApp.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.mainApp.name }}
+    spec:
+      containers:
+        - name: {{ .Values.mainApp.name }}
+          # กำหนด image, tag, และ pullPolicy จาก values.yaml
+          image: "{{ .Values.mainApp.image.repository }}:{{ .Values.mainApp.image.tag }}"
+          imagePullPolicy: {{ .Values.mainApp.image.pullPolicy }}
+          ports:
+            # กำหนด containerPort จาก values.yaml
+            - containerPort: {{ .Values.mainApp.containerPort }}
