@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jenkins-permanent-agent-sec-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jenkins-agent-sec
+  template:
+    metadata:
+      labels:
+        app: jenkins-agent-sec
+
+    spec:
+      containers:
+      - name: agent-sec
+        image: secop:latest
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          runAsUser: 0
+        args:
+        - "-url"
+        - "http://my-jenkins:8080/"
+        - "-secret"
+        - "38f4b614909c3cb17c8618338847cd9c99e0bc1a78d6113b5569b89f8acf98b7"
+        - "-name"
+        - "agent-sec"
+        - "-workDir"
+        - "/home/jenkins"
+        - "-webSocket"
+        volumeMounts:
+        - name: docker-sock
+          mountPath: /var/run/docker.sock
+      volumes:
+      - name: docker-sock
+        hostPath:
+          path: /var/run/docker.sock

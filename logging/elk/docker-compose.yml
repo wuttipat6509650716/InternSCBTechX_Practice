@@ -1,0 +1,100 @@
+version: '3.8'
+
+services:
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.14.0
+    container_name: elasticsearch
+    environment:
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+    volumes:
+      - ./elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
+      - esdata:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - elk
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.14.0
+    container_name: logstash
+    volumes:
+      - ./logstash/pipeline/:/usr/share/logstash/pipeline/
+    ports:
+      - "5044:5044"
+      - "9600:9600"
+    depends_on:
+      - elasticsearch
+    networks:
+      - elk
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.14.0
+    container_name: kibana
+    volumes:
+      - ./kibana/config/kibana.yml:/usr/share/kibana/config/kibana.yml
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    networks:
+      - elk
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.14.0
+    container_name: filebeat
+    user: root
+    volumes:
+      - ./filebeat/config/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - app-logs:/var/log/app
+    depends_on:
+      - logstash
+    networks:
+      - elk
+
+  app-logger:
+    image: alpine:latest
+    container_name: app-logger
+    command: >
+      sh -c "
+        while true; do
+          TIMESTAMP=$$(date -u +'%Y-%m-%dT%H:%M:%S.%3NZ');
+          
+          RND_LEVEL=$$(($$RANDOM % 3));
+          case $$RND_LEVEL in
+            0) LEVEL='DEBUG';;
+            1) LEVEL='INFO';;
+            2) LEVEL='ERROR';;
+          esac
+
+          USER_ID=$$(($$RANDOM % 500 + 1));
+          
+          if [ $$LEVEL = 'ERROR' ]; then
+            echo \"$$TIMESTAMP [$$LEVEL] feature login error may be due to network problems\" >> /var/log/app/app.log;
+          elif [ $$LEVEL = 'INFO' ]; then
+            echo \"$$TIMESTAMP [$$LEVEL] User id $$USER_ID entered the password incorrectly.\" >> /var/log/app/app.log;
+          else
+            echo \"$$TIMESTAMP [$$LEVEL] User id $$USER_ID has successfully logged in.\" >> /var/log/app/app.log;
+          fi;
+          
+          DELAY=$$(($$RANDOM % 10 + 1));
+          echo \"Generated log. Next log in $$DELAY seconds...\"; # แสดงผลใน console เพื่อให้เห็นการทำงาน
+          sleep $$DELAY;
+          
+        done
+      "
+    volumes:
+      - app-logs:/var/log/app
+    networks:
+      - elk
+
+volumes:
+  esdata:
+    driver: local
+  app-logs:
+    driver: local
+
+networks:
+  elk:
+    driver: bridge
+

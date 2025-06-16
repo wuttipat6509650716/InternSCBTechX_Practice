@@ -1,16 +1,7 @@
-# ขั้นตอนที่ 1: เลือก Base Image
 FROM jenkins/inbound-agent:latest-jdk21
 
-# ขั้นตอนที่ 2: สลับไปใช้สิทธิ์ Root เพื่อติดตั้งโปรแกรมต่างๆ
-# การติดตั้งโปรแกรมใน Linux ส่วนใหญ่ต้องใช้สิทธิ์ผู้ดูแลระบบ (root)
 USER root
 
-# ขั้นตอนที่ 3: ติดตั้งเครื่องมือพื้นฐานและ Git
-# - apt-get update: อัปเดตรายการแพ็กเกจเพื่อให้ได้เวอร์ชันล่าสุด
-# - apt-get install -y: ติดตั้งโปรแกรมต่างๆ โดย -y คือการตอบ Yes อัตโนมัติ
-#   - git: สำหรับดึงซอร์สโค้ดจาก GitHub
-#   - lsb-release: ใช้สำหรับดึงชื่อเวอร์ชันของ OS (จำเป็นสำหรับติดตั้ง Docker)
-#   - curl, gnupg, ca-certificates: เครื่องมือพื้นฐานที่จำเป็นสำหรับการติดตั้ง Docker และ Helm
 RUN apt-get update && apt-get install -y \
     git \
     lsb-release \
@@ -18,37 +9,21 @@ RUN apt-get update && apt-get install -y \
     gnupg \
     ca-certificates
 
-# ขั้นตอนที่ 4: ติดตั้ง Maven
-# ติดตั้ง Maven สำหรับใช้ build โปรเจค Java
 RUN apt-get install -y maven
 
-# ขั้นตอนที่ 5: ติดตั้ง Docker CLI (สำหรับทำ Docker-in-Docker)
-# เราจะติดตั้งเฉพาะ Command Line Interface (CLI) ของ Docker เท่านั้น ไม่ได้ติดตั้ง Docker Engine ทั้งหมด
-# เพื่อให้ Agent ของเราสามารถส่งคำสั่งไปให้ Docker Engine ของเครื่อง Host ได้ผ่าน Socket
-# 1. สร้างโฟลเดอร์สำหรับเก็บ GPG key ของ Docker
 RUN install -m 0755 -d /etc/apt/keyrings
-# 2. ดาวน์โหลด GPG key ของ Docker มาติดตั้ง เพื่อยืนยันว่าแพ็กเกจที่จะติดตั้งนั้นปลอดภัย
 RUN curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-# 3. เพิ่ม Docker repository เข้าไปในรายการ source list ของ apt
 RUN echo \
   "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \
   $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
-# 4. อัปเดตรายการแพ็กเกจอีกครั้ง และติดตั้ง docker-ce-cli
 RUN apt-get update && apt-get install -y docker-ce-cli
 
-# ขั้นตอนที่ 6: ติดตั้ง Helm
-# Helm เป็นเครื่องมือจัดการแอปพลิเคชัน (Package Manager) บน Kubernetes
-# 1. ดาวน์โหลดสคริปต์สำหรับติดตั้ง Helm จาก GitHub repository อย่างเป็นทางการ
 RUN curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
-# 2. กำหนด permission ให้สคริปต์สามารถรันได้
 RUN chmod 700 get_helm.sh
-# 3. รันสคริปต์เพื่อติดตั้ง Helm เวอร์ชันล่าสุด
 RUN ./get_helm.sh
 
-# ขั้นตอนที่ 7: ทำความสะอาด
-# ลบไฟล์ที่ไม่จำเป็นออกไปเพื่อลดขนาดของ Image
+RUN curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+
 RUN apt-get clean && rm -rf /var/lib/apt/lists/* get_helm.sh
 
-# ขั้นตอนที่ 8: สลับกลับไปใช้ User 'jenkins'
-# เป็น Best Practice ที่ไม่ควรให้ Container ทำงานด้วยสิทธิ์ root เพื่อความปลอดภัย
 USER jenkins

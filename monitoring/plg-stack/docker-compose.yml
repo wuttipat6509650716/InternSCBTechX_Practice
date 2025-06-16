@@ -1,0 +1,68 @@
+version: "3.8"
+
+services:
+  # Service สำหรับสร้าง Log จำลอง
+  log-generator:
+    image: busybox
+    container_name: log-generator
+    command: >
+      sh -c 'i=0; while true; do echo "$$i: $(date) - INFO - This is a sample log line."; i=$$(i+1); sleep 2; done'
+    volumes:
+      - ./logs:/var/log
+
+  # Promtail: ตัวส่ง Log
+  promtail:
+    image: grafana/promtail:2.9.5
+    container_name: promtail
+    volumes:
+      - ./promtail/promtail-config.yml:/etc/promtail/promtail-config.yml
+      - ./logs:/var/log
+    command: -config.file=/etc/promtail/promtail-config.yml
+
+  # Loki: ตัวเก็บ Log
+  loki:
+    image: grafana/loki:2.9.5
+    container_name: loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+
+  # Prometheus: ตัวเก็บ Metrics
+  prometheus:
+    image: prom/prometheus:v2.51.1
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    command: --config.file=/etc/prometheus/prometheus.yml
+
+  # Grafana: ตัวแสดงผล Dashboard
+  grafana:
+    image: grafana/grafana:10.4.2
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - loki
+      - prometheus
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+
+    # เพิ่ม Service นี้เข้าไป
+  node-exporter:
+    image: prom/node-exporter:v1.8.1
+    container_name: node-exporter
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    ports:
+      - "9100:9100"
+    restart: unless-stopped

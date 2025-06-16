@@ -5,8 +5,8 @@ pipeline {
 
     environment {
         DOCKER_IMAGE_NAME = "my-demo-app-pipeline"
-        HELM_RELEASE_NAME = "my-demo-app"
-        HELM_CHART_PATH   = "helm/my-app"
+        HELM_RELEASE_NAME = "my-helm-app"
+        HELM_CHART_PATH   = "minikube/example-helm"
     }
 
     stages {
@@ -42,16 +42,20 @@ pipeline {
         }
 
         stage('3. Deploy with Helm') {
-            steps {
-                echo "Deploying or upgrading Helm release: ${HELM_RELEASE_NAME}..."
+        steps {
+            dir(HELM_CHART_PATH) {
+                echo "Deploying or upgrading Helm release: ${HELM_RELEASE_NAME} from directory ${pwd()}"
+                    
                 sh """
-                    helm upgrade --install ${HELM_RELEASE_NAME} ${HELM_CHART_PATH} \\
-                         --set image.repository=${DOCKER_IMAGE_NAME} \\
-                         --set image.tag=latest \\
-                         --wait
+                    helm upgrade --install ${HELM_RELEASE_NAME} . \\
+                        --set image.repository=${DOCKER_IMAGE_NAME} \\
+                        --set image.tag=latest \\
+                        --set image.pullPolicy=Never \\
+                        --wait
                 """
             }
         }
+    }
     }
 
     post {
