@@ -36,11 +36,6 @@ Replace `<your-vm-ip>` with your actual VM IP.
 Execute the Ansible playbook to install and configure the logging and monitoring tools:
 ```bash
 ansible-playbook -i hosts starter.yml
-### (Optional) Cleanup
-To delete all Azure resources and clean up the infrastructure, run:
-```bash
-cd ../terraform
-terraform destroy
 ```
 
 ### (Optional) Cleanup
