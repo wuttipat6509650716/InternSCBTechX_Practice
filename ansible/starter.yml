@@ -1,5 +1,5 @@
 ---
-- name: Install Development Tools on Azure VM
+- name: Install Development Tools on Azure VM #ansible-playbook -i hosts starter.yml
   hosts: azure_vms
   become: yes
   tasks:
@@ -30,12 +30,15 @@
 
     - name: 4. Add the Docker repository to Apt sources
       ansible.builtin.apt_repository:
-        repo: >-
-          deb [arch={{ ansible_architecture }} signed-by=/etc/apt/keyrings/docker.asc]
-          https://download.docker.com/linux/ubuntu
-          {{ ansible_distribution_release }} stable
+        repo: >
+          deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc]
+          https://download.docker.com/linux/ubuntu jammy stable
         state: present
         filename: docker
+
+    - name: Update apt cache after adding Docker repo
+      ansible.builtin.apt:
+        update_cache: yes
 
     - name: 5. Install Docker packages
       ansible.builtin.apt:
@@ -57,3 +60,21 @@
       apt:
         name: openjdk-21-jdk
         state: present
+
+    - name: 8. Clone repository
+      ansible.builtin.git:
+        repo: 'https://github.com/wuttipat6509650716/InternSCBTechX_Practice.git'
+        dest: /home/azureuser/InternSCBTechX_Practice
+      #become: no
+
+    - name: 9. Docker compose up (Logging) #5601
+      community.docker.docker_compose_v2:
+        project_src: /home/azureuser/InternSCBTechX_Practice/logging/elk
+        state: present
+      #become: no
+
+    - name: 10. Docker compose up (Monitoring) #3000
+      community.docker.docker_compose_v2:
+        project_src: /home/azureuser/InternSCBTechX_Practice/monitoring/plg-stack
+        state: present
+      #become: no

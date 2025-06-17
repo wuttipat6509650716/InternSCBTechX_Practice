@@ -3,7 +3,7 @@ terraform {
     azurerm = {
       source  = "hashicorp/azurerm"
       version = "=3.0.0"
-    }
+    } 
   }
 }
 
@@ -11,45 +11,36 @@ provider "azurerm" {
   features {}
 }
 
-data "azurerm_resource_group" "existing" {
-  name = "RGmypratice"
+resource "azurerm_resource_group" "exampleTerraform" {
+  name     = "example-resources-ssh"
+  location = "southeastasia"
 }
 
-terraform {
-  backend "azurerm" {
-    resource_group_name = "RGmypratice"
-    storage_account_name = "mystorageterraform1"
-    container_name       = "tfstate"
-    key                  = "terraform.tfstate"
-  }
-}
-
-resource "azurerm_virtual_network" "example" {
-  name                = "terraformExample-network"
-  resource_group_name = data.azurerm_resource_group.existing.name
-  location            = data.azurerm_resource_group.existing.location
+resource "azurerm_virtual_network" "exampleTerraform" {
+  name                = "exampleTerraform-network"
+  resource_group_name = azurerm_resource_group.exampleTerraform.name
+  location            = azurerm_resource_group.exampleTerraform.location
   address_space       = ["10.0.0.0/16"]
 }
 
-resource "azurerm_subnet" "example" {
-  name                 = "terraformExample-subnet"
-  resource_group_name  = data.azurerm_resource_group.existing.name
-  virtual_network_name = azurerm_virtual_network.example.name
-  address_prefixes     = ["10.0.1.0/24"]
+resource "azurerm_subnet" "exampleTerraform" {
+  name                 = "internal"
+  resource_group_name  = azurerm_resource_group.exampleTerraform.name
+  virtual_network_name = azurerm_virtual_network.exampleTerraform.name
+  address_prefixes     = ["10.0.2.0/24"]
 }
 
-resource "azurerm_public_ip" "example" {
-  name                = "terraformExample-pip"
-  location            = data.azurerm_resource_group.existing.location
-  resource_group_name = data.azurerm_resource_group.existing.name
+resource "azurerm_public_ip" "exampleTerraform" {
+  name                = "exampleTerraform-public-ip"
+  resource_group_name = azurerm_resource_group.exampleTerraform.name
+  location            = azurerm_resource_group.exampleTerraform.location
   allocation_method   = "Static"
-  sku                 = "Basic"
 }
 
-resource "azurerm_network_security_group" "example" {
-  name                = "terraformMyNetworkSecurityGroup"
-  location            = data.azurerm_resource_group.existing.location
-  resource_group_name = data.azurerm_resource_group.existing.name
+resource "azurerm_network_security_group" "exampleTerraform" {
+  name                = "exampleTerraform-nsg"
+  location            = azurerm_resource_group.exampleTerraform.location
+  resource_group_name = azurerm_resource_group.exampleTerraform.name
 
   security_rule {
     name                       = "SSH"
@@ -62,50 +53,64 @@ resource "azurerm_network_security_group" "example" {
     source_address_prefix      = "*"
     destination_address_prefix = "*"
   }
-}
-
-resource "azurerm_network_interface" "example" {
-  name                = "terraformExample-nic"
-  location            = data.azurerm_resource_group.existing.location
-  resource_group_name = data.azurerm_resource_group.existing.name
-
-  ip_configuration {
-    name                          = "internal"
-    subnet_id                     = azurerm_subnet.example.id
-    private_ip_address_allocation = "Dynamic"
-    public_ip_address_id          = azurerm_public_ip.example.id # เพิ่ม
+  security_rule {
+    name                       = "Allow3000"
+    priority                   = 1002
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "3000"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+  security_rule {
+    name                       = "Kibana"
+    priority                   = 1003
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "5601"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
   }
 }
 
-resource "azurerm_network_interface_security_group_association" "example" {
-  network_interface_id      = azurerm_network_interface.example.id
-  network_security_group_id = azurerm_network_security_group.example.id
+resource "azurerm_network_interface" "exampleTerraform" {
+  name                = "exampleTerraform-nic"
+  location            = azurerm_resource_group.exampleTerraform.location
+  resource_group_name = azurerm_resource_group.exampleTerraform.name
+
+  ip_configuration {
+    name                          = "internal"
+    subnet_id                     = azurerm_subnet.exampleTerraform.id
+    private_ip_address_allocation = "Dynamic"
+    public_ip_address_id          = azurerm_public_ip.exampleTerraform.id
+  }
 }
 
-data "azurerm_ssh_public_key" "existing" {
-  name                = "sshpublickeymypratice"
-  resource_group_name = data.azurerm_resource_group.existing.name
+resource "azurerm_network_interface_security_group_association" "exampleTerraform" {
+  network_interface_id      = azurerm_network_interface.exampleTerraform.id
+  network_security_group_id = azurerm_network_security_group.exampleTerraform.id
 }
 
-resource "azurerm_linux_virtual_machine" "mypraticeterraform" {
-  name                = "mypraticeterraform-vm"
-  resource_group_name = data.azurerm_resource_group.existing.name
-  location            = data.azurerm_resource_group.existing.location
-  size                = "Standard_B2s"
-  admin_username      = "azureuser"
-  network_interface_ids = [
-    azurerm_network_interface.example.id,
-  ]
+resource "azurerm_linux_virtual_machine" "exampleTerraform" {
+  name                  = "exampleTerraform-vm"
+  resource_group_name   = azurerm_resource_group.exampleTerraform.name
+  location              = azurerm_resource_group.exampleTerraform.location
+  size                  = "Standard_B2s"
+  admin_username        = "azureuser"
+  network_interface_ids = [azurerm_network_interface.exampleTerraform.id]
 
   admin_ssh_key {
     username   = "azureuser"
-    public_key = data.azurerm_ssh_public_key.existing.public_key
+    public_key = file("~/.ssh/id_rsa.pub")
   }
 
   os_disk {
     caching              = "ReadWrite"
     storage_account_type = "Standard_LRS"
-    name                 = "example-os-disk"
   }
 
   source_image_reference {
@@ -114,4 +119,8 @@ resource "azurerm_linux_virtual_machine" "mypraticeterraform" {
     sku       = "22_04-lts-gen2"
     version   = "latest"
   }
+}
+
+output "public_ip_address" {
+  value = azurerm_linux_virtual_machine.exampleTerraform.public_ip_address
 }

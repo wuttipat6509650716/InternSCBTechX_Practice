@@ -1,2 +1,2 @@
 [azure_vms]
-52.231.228.237 ansible_user=azureuser ansible_ssh_private_key_file=~/Desktop/mypratice/sshpublickeymypratice.pem
+13.76.89.125 ansible_user=azureuser ansible_ssh_private_key_file=~/.ssh/id_rsa

@@ -1,7 +1,6 @@
 version: "3.8"
 
 services:
-  # Service สำหรับสร้าง Log จำลอง
   log-generator:
     image: busybox
     container_name: log-generator
@@ -50,7 +49,6 @@ services:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
 
-    # เพิ่ม Service นี้เข้าไป
   node-exporter:
     image: prom/node-exporter:v1.8.1
     container_name: node-exporter
