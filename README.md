@@ -42,4 +42,11 @@ To delete all Azure resources and clean up the infrastructure, run:
 cd ../terraform
 terraform destroy
 ```
+
+### (Optional) Cleanup
+To delete all Azure resources and clean up the infrastructure, run:
+```bash
+cd ../terraform
+terraform destroy
+```
 This will deprovision the VM and remove all associated resources.
