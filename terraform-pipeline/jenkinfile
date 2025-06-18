@@ -1,0 +1,86 @@
+pipeline {
+    agent any
+
+    parameters {
+        choice(name: 'ACTION', choices: ['apply', 'destroy'], description: 'Select action to perform')
+    }
+
+    environment {
+        TF_IN_AUTOMATION = 'true'
+        // กำหนดชื่อไฟล์ key ที่จะสร้าง
+        KEY_NAME = "temp_id_rsa"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git 'https://github.com/wuttipat6509650716/InternSCBTechX_Practice.git'
+            }
+        }
+
+        stage('Generate Volatile SSH Key') {
+            steps {
+                script {
+                    echo "Generating a new SSH key pair for this build..."
+                    sh "ssh-keygen -t rsa -b 4096 -f ${env.KEY_NAME} -N '' -C 'volatile-key-for-build-${BUILD_NUMBER}'"
+                    
+                    def publicKey = readFile("${env.KEY_NAME}.pub").trim()
+                    
+                    env.TF_VAR_admin_public_key = publicKey
+
+                    echo "Public key has been generated and stored for Terraform."
+                }
+            }
+        }
+
+        stage('Terraform Actions') {
+            steps {
+                dir('terraform-pipeline') {
+                    withCredentials([
+                        string(credentialsId: 'AZURE_CLIENT_ID', variable: 'TF_VAR_client_id'),
+                        string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'TF_VAR_client_secret'),
+                        string(credentialsId: 'AZURE_SUBSCRIPTION_ID', variable: 'TF_VAR_subscription_id'),
+                        string(credentialsId: 'AZURE_TENANT_ID', variable: 'TF_VAR_tenant_id')
+                    ]) {
+                        
+                        stage('Terraform Init') {
+                            steps {
+                                sh 'terraform init'
+                            }
+                        }
+
+                        stage('Apply Infrastructure') {
+                            when {
+                                expression { params.ACTION == 'apply' }
+                            }
+                            steps {
+                                sh 'terraform plan -out=tfplan -var="admin_public_key=${TF_VAR_admin_public_key}"'
+                                input message: "Review the plan. A new key has been generated. Do you want to apply?", ok: 'Yes, Apply'
+                                sh 'terraform apply -auto-approve tfplan'
+                            }
+                        }
+
+                        stage('Destroy Infrastructure') {
+                            when {
+                                expression { params.ACTION == 'destroy' }
+                            }
+                            steps {
+                                sh 'terraform plan -destroy -out=tfdestroy -var="admin_public_key=${TF_VAR_admin_public_key}"'
+                                input message: 'DANGER! This will destroy infrastructure. Are you sure?', ok: 'Yes, Destroy'
+                                sh 'terraform apply -auto-approve tfdestroy'
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    post {
+        always {
+            echo "Archiving the private key. WARNING: This is a security risk."
+            archiveArtifacts artifacts: "${env.KEY_NAME}", allowEmptyArchive: true
+
+            sh "rm -f ${env.KEY_NAME} ${env.KEY_NAME}.pub"
+        }
+    }
+}

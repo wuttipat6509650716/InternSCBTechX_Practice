@@ -65,7 +65,7 @@ resource "azurerm_network_security_group" "exampleTerraform" {
     destination_address_prefix = "*"
   }
   security_rule {
-    name                       = "Kibana"
+    name                       = "Allow5601"
     priority                   = 1003
     direction                  = "Inbound"
     access                     = "Allow"
