@@ -1,12 +1,14 @@
 pipeline {
-    agent any
+    agent {
+        label 'agent-eiei'
+    }
 
     environment {
-        AZURE_SP = credentials('azure-service-principal')
-        SSH_PUBLIC_KEY = credentials('admin-ssh-public-key')
-        SSH_PRIVATE_KEY_CRED = 'azure-vm-ssh-key' 
-        ANSIBLE_DIR = 'pipeline-monitoring-logging/ansible'
-        TERRAFORM_DIR = 'pipeline-monitoring-logging/terraform'
+        AZURE_SP             = credentials('azure-service-principal')
+        SSH_PUBLIC_KEY       = credentials('admin-ssh-public-key')
+        SSH_PRIVATE_KEY_CRED = 'ansible-vm-ssh-key'
+        ANSIBLE_DIR          = 'pipeline-monitoring-logging/ansible'
+        TERRAFORM_DIR        = 'pipeline-monitoring-logging/terraform'
     }
 
     stages {
@@ -31,7 +33,7 @@ pipeline {
 
         stage('Terraform Init') {
             steps {
-                dir('pipeline-monitoring-logging/terraform') {
+                dir(env.TERRAFORM_DIR) {
                     sh 'terraform init'
                 }
             }
@@ -39,7 +41,7 @@ pipeline {
 
         stage('Terraform Plan') {
             steps {
-                dir('pipeline-monitoring-logging/terraform') {
+                dir(env.TERRAFORM_DIR) {
                     sh 'terraform plan -var="ssh_public_key=$SSH_PUBLIC_KEY" -out=tfplan'
                 }
             }
@@ -47,9 +49,40 @@ pipeline {
 
         stage('Terraform Apply') {
             steps {
-                dir('pipeline-monitoring-logging/terraform') {
-                    // input message: 'Apply?', ok: 'Go'
+                dir(env.TERRAFORM_DIR) {
                     sh 'terraform apply -auto-approve tfplan'
+                }
+            }
+        }
+                
+        stage('Install Ansible Collections') {
+            steps {
+                sh 'ansible-galaxy collection install community.docker'
+            }
+        }
+
+        stage('Generate Dynamic Ansible Inventory') {
+            steps {
+                dir(env.TERRAFORM_DIR) {
+                    script {
+                        def publicIp = sh(script: "terraform output -raw public_ip_address", returnStdout: true).trim()
+                        def inventoryContent = "[all]\n${publicIp} ansible_user=azureuser ansible_ssh_private_key_file=${env.WORKSPACE}/.ssh_vm_key\n"
+                        writeFile file: "${env.WORKSPACE}/${env.ANSIBLE_DIR}/hosts", text: inventoryContent
+                    }
+                }
+            }
+        }
+
+        stage('Run Ansible Playbook') {
+            steps {
+                withCredentials([sshUserPrivateKey(credentialsId: env.SSH_PRIVATE_KEY_CRED, keyFileVariable: 'SSH_KEY')]) {
+                    sh '''
+                    cp "$SSH_KEY" $WORKSPACE/.ssh_vm_key
+                    chmod 600 $WORKSPACE/.ssh_vm_key
+
+                    export ANSIBLE_HOST_KEY_CHECKING=False
+                    ansible-playbook -i ${ANSIBLE_DIR}/hosts ${ANSIBLE_DIR}/starter.yml
+                    '''
                 }
             }
         }
