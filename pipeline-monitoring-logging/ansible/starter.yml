@@ -1,6 +1,6 @@
 ---
 - name: Install Development Tools on Azure VM #ansible-playbook -i hosts starter.yml
-  hosts: azure_vms
+  hosts: all
   become: yes
   tasks:
     - name: Update apt package cache

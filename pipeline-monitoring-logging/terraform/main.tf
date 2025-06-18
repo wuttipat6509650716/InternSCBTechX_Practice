@@ -7,8 +7,6 @@ terraform {
   }
 }
 
-# Provider will automatically use environment variables set by Jenkins
-# ARM_CLIENT_ID, ARM_CLIENT_SECRET, ARM_TENANT_ID, ARM_SUBSCRIPTION_ID
 provider "azurerm" {
   features {}
 }
@@ -17,8 +15,6 @@ resource "azurerm_resource_group" "main_rg" {
   name     = "example-resources-ssh"
   location = "southeastasia"
 }
-
-# ... (ส่วนที่เหลือของโค้ดของคุณเหมือนเดิม) ...
 
 resource "azurerm_virtual_network" "main_vnet" {
   name                = "main-network"

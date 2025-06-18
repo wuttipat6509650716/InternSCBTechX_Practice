@@ -36,7 +36,9 @@ RUN echo "deb [signed-by=/etc/apt/keyrings/hashicorp.gpg arch=$(dpkg --print-arc
 RUN apt-get update && apt-get install -y \
     terraform \
     ansible \
-    azure-cli
+    azure-cli \
+    docker-compose-plugin
+    #เพิ่มมาล่าสุด docker-compose-plugin 
 
 RUN apt-get clean && rm -rf /var/lib/apt/lists/* get_helm.sh
 
