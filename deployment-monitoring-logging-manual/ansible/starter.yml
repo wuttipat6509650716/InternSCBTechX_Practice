@@ -69,12 +69,12 @@
 
     - name: 9. Docker compose up (Logging:5601) #5601
       community.docker.docker_compose_v2:
-        project_src: /home/azureuser/InternSCBTechX_Practice/logging/elk
+        project_src: /home/azureuser/InternSCBTechX_Practice/deployment-monitoring-logging-manual/logging/elk
         state: present
       #become: no
 
     - name: 10. Docker compose up (Monitoring:3000) #3000
       community.docker.docker_compose_v2:
-        project_src: /home/azureuser/InternSCBTechX_Practice/monitoring/plg-stack
+        project_src: /home/azureuser/InternSCBTechX_Practice/deployment-monitoring-logging-manual/monitoring/plg-stack
         state: present
       #become: no

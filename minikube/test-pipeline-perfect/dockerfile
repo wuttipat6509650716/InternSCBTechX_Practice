@@ -1,3 +1,4 @@
+#image ที่เป็น agent node
 FROM jenkins/inbound-agent:latest-jdk21
 
 USER root
@@ -21,8 +22,20 @@ RUN apt-get update && apt-get install -y docker-ce-cli
 RUN curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
 RUN chmod 700 get_helm.sh
 RUN ./get_helm.sh
+#Devsecops
+#RUN curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
 
-RUN curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+# --- ส่วนการติดตั้ง Terraform (ฉบับแก้ไข) ---
+# 1. ดาวน์โหลด GPG key ของ HashiCorp และบันทึกไปยัง keyrings
+RUN curl -fsSL https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /etc/apt/keyrings/hashicorp.gpg
+# 2. เพิ่ม repository ของ HashiCorp ด้วยตนเอง
+RUN echo "deb [signed-by=/etc/apt/keyrings/hashicorp.gpg arch=$(dpkg --print-architecture)] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/hashicorp.list
+
+# --- ส่วนการติดตั้ง Ansible และอัปเดตเพื่อติดตั้ง Terraform ---
+# อัปเดตรายการแพ็กเกจอีกครั้งเพื่อให้รู้จัก repo ใหม่ แล้วติดตั้ง Terraform และ Ansible
+RUN apt-get update && apt-get install -y \
+    terraform \
+    ansible
 
 RUN apt-get clean && rm -rf /var/lib/apt/lists/* get_helm.sh
 
