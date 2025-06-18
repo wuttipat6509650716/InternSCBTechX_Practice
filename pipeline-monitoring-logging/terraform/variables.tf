@@ -1,11 +1,9 @@
-variable "subscription_id" {}
-variable "client_id" {}
-variable "client_secret" { sensitive = true }
-variable "tenant_id" {}
+# main.tf
 
 variable "admin_public_key" {
   description = "Public SSH key for the admin user."
-  default     = file("~/.ssh/id_rsa.pub")
+  type        = string
+  # sensitive   = true # Optional: uncomment if you want to hide it in logs
 }
 
 variable "location" {
