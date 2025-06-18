@@ -15,7 +15,7 @@ provider "azurerm" {
 
 resource "azurerm_resource_group" "main_rg" {
   name     = "example-resources-ssh"
-  location = var.location
+  location = "southeastasia"
 }
 
 # ... (ส่วนที่เหลือของโค้ดของคุณเหมือนเดิม) ...
@@ -110,8 +110,9 @@ resource "azurerm_linux_virtual_machine" "main_vm" {
 
   admin_ssh_key {
     username   = "azureuser"
-    public_key = var.admin_public_key
+    public_key = var.ssh_public_key
   }
+
 
   os_disk {
     caching              = "ReadWrite"

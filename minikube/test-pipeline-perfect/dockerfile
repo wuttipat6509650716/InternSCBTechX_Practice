@@ -35,7 +35,8 @@ RUN echo "deb [signed-by=/etc/apt/keyrings/hashicorp.gpg arch=$(dpkg --print-arc
 # อัปเดตรายการแพ็กเกจอีกครั้งเพื่อให้รู้จัก repo ใหม่ แล้วติดตั้ง Terraform และ Ansible
 RUN apt-get update && apt-get install -y \
     terraform \
-    ansible
+    ansible \
+    azure-cli
 
 RUN apt-get clean && rm -rf /var/lib/apt/lists/* get_helm.sh
 
