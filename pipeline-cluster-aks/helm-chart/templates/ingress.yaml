@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: main-ingress
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          - path: /home
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Values.demoapp.name }}-cluster-service
+                port:
+                  number: {{ .Values.demoapp.servicePort }}
+          - path: /foo
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Values.fooapp.name }}-service
+                port:
+                  number: {{ .Values.fooapp.port }}

@@ -1,0 +1,13 @@
+demoapp:
+  name: mydemoapp
+  image: demoregistrymypracticete12345.azurecr.io/myappjava:v1
+  containerPort: 8080
+  servicePort: 80
+
+fooapp:
+  name: foo
+  image: kicbase/echo-server:1.0
+  port: 8080
+
+ingress:
+  host: practice.com
