@@ -1,13 +1,14 @@
 pipeline {
     agent {
-        label 'agent-eiei'
+        label 'agent-eiei' 
     }
 
     environment {
+        AZURE_SP       = credentials('azure-service-principal')
         RESOURCE_GROUP = "demo-rg-aks-acr"
         LOCATION       = "southeastasia"
-        AKS_NAME       = "demoakscluster"
-        ACR_NAME       = "demoregistry12arubdemodev"
+        AKS_NAME       = "demoaksclusterte12345"
+        ACR_NAME       = "demoregistrymypracticete12345"
         IMAGE_NAME     = "myappjava"
         IMAGE_TAG      = "v1"
         CHART_NAME     = "mychart"
@@ -15,12 +16,13 @@ pipeline {
     }
 
     stages {
-
+        
         stage('Git Checkout') {
             steps {
                 git url: 'https://github.com/wuttipat6509650716/InternSCBTechX_Practice.git', branch: 'main'
             }
         }
+        
 
         stage('Azure Login') {
             steps {
@@ -63,9 +65,10 @@ pipeline {
                 sh '''
                     echo "Logging in to Azure Container Registry"
                     az acr login --name $ACR_NAME
+                    mvn clean package
 
                     echo "Building Docker image"
-                    docker build -t $ACR_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG .
+                    docker buildx build --platform linux/amd64 -t $ACR_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG . --load
 
                     echo "Pushing Docker image to ACR"
                     docker push $ACR_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG
@@ -81,19 +84,27 @@ pipeline {
                 '''
             }
         }
+        
+        stage('Helm Deploy') {
+            steps {
+                sh '''
+                    echo "Loadbalance Azure"
+                    helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+                    helm repo update
+                    helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx --create-namespace --namespace ingress-nginx --set controller.service.annotations.service\\\\.beta\\\\.kubernetes\\\\.io/azure-load-balancer-health-probe-request-path=/healthz                    
+                    echo "Waiting for 50 seconds for Ingress to be ready"
+                    sleep 50
+                    echo "Deploying application with Helm..."
+                    helm upgrade --install $CHART_NAME ./pipeline-cluster-aks/helm-chart \
+                        --namespace $NAMESPACE \
+                        --create-namespace \
+                        --set image.repository=$ACR_LOGIN_SERVER/$IMAGE_NAME \
+                        --set image.tag=$IMAGE_TAG
+                '''
+            }
+        }
 
-        # stage('Helm Deploy') {
-        #     steps {
-        #         sh '''
-        #             echo "Deploying application with Helm..."
-        #             helm upgrade --install $CHART_NAME ./helm/$CHART_NAME \
-        #                 --namespace $NAMESPACE \
-        #                 --create-namespace \
-        #                 --set image.repository=$ACR_LOGIN_SERVER/$IMAGE_NAME \
-        #                 --set image.tag=$IMAGE_TAG
-        #         '''
-        #     }
-        # }
+        
     }
 
     post {
