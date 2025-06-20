@@ -14,7 +14,8 @@ cd InternSCBTechX_Practice
 ```
 ### 3. Provision Azure VM Using Terraform
 ```bash
-cd terraform
+cd deployment-monitoring-logging-manual/terraform
+terraform init
 terraform apply
 ```
 -   Type  `yes`  when prompted to confirm the infrastructure creation.
