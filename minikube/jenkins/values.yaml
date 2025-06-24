@@ -1,3 +1,5 @@
+#ไม่ได้ใช้ ติดตั้งแบบปกติเลย helm ไม่ได้ใช้ไฟล์นี้
+
 controller:
   serviceType: NodePort
   jenkinsUrl: http://jenkins.default.svc.cluster.local:8080
