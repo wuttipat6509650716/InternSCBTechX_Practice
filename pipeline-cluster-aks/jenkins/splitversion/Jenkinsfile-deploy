@@ -1,0 +1,108 @@
+pipeline {
+    agent {
+        label 'agent-eiei' 
+    }
+
+    environment {
+        AZURE_SP       = credentials('azure-service-principal')
+        RESOURCE_GROUP = "demo-rg-aks-acr"
+        LOCATION       = "southeastasia"
+        AKS_NAME       = "demoaksclusterte12345"
+        ACR_NAME       = "demoregistrymypracticete12345"
+        IMAGE_NAME     = "myappjava"
+        IMAGE_TAG      = "v1"
+        CHART_NAME     = "mychart"
+        NAMESPACE      = "default"
+    }
+
+    stages {
+        
+        stage('Git Checkout') {
+            steps {
+                git url: 'https://github.com/wuttipat6509650716/InternSCBTechX_Practice.git', branch: 'main'
+            }
+        }
+        
+        stage('Azure Login') {
+            steps {
+                sh '''
+                echo "Logging into Azure..."
+                az login --service-principal \
+                         --username "$AZURE_SP_CLIENT_ID" \
+                         --password "$AZURE_SP_CLIENT_SECRET" \
+                         --tenant "$AZURE_SP_TENANT_ID"
+
+                az account set --subscription "$AZURE_SP_SUBSCRIPTION_ID"
+                '''
+            }
+        }
+
+        stage('Build & Push Docker Image') {
+            steps {
+                script {
+                    echo "Fetching ACR Login Server name"
+                    env.ACR_LOGIN_SERVER = sh(script: "az acr show --name ${env.ACR_NAME} --query loginServer --output tsv", returnStdout: true).trim()
+                    if (!env.ACR_LOGIN_SERVER) {
+                        error("Could not fetch ACR Login Server. Please check if ACR '${env.ACR_NAME}' exists.")
+                    }
+                    echo "ACR Login Server is: ${env.ACR_LOGIN_SERVER}"
+                }
+
+                sh '''
+                    echo "Logging in to Azure Container Registry"
+                    az acr login --name $ACR_NAME
+                    
+                    echo "Building Java application"
+                    mvn clean package
+
+                    echo "Building Docker image"
+                    docker buildx build --platform linux/amd64 -t $ACR_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG . --load
+
+                    echo "Pushing Docker image to ACR"
+                    docker push $ACR_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG
+                '''
+            }
+        }
+
+        stage('Get AKS Credentials') {
+            steps {
+                sh '''
+                    echo "Getting AKS cluster credentials"
+                    az aks get-credentials --resource-group $RESOURCE_GROUP --name $AKS_NAME --overwrite-existing
+                '''
+            }
+        }
+        
+        stage('Helm Deploy') {
+            steps {
+                sh '''
+                    echo "Loadbalance Azure"
+                    helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+                    helm repo update
+                    helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx --create-namespace --namespace ingress-nginx --set controller.service.annotations.service\\\\.beta\\\\.kubernetes\\\\.io/azure-load-balancer-health-probe-request-path=/healthz                    
+                    echo "Waiting for 50 seconds for Ingress to be ready"
+                    sleep 50
+                    echo "Deploying application with Helm..."
+                    helm upgrade --install $CHART_NAME ./pipeline-cluster-aks/helm-chart \
+                        --namespace $NAMESPACE \
+                        --create-namespace \
+                        --set image.repository=$ACR_LOGIN_SERVER/$IMAGE_NAME \
+                        --set image.tag=$IMAGE_TAG
+                '''
+            }
+        }
+    }
+
+    post {
+        always {
+            echo "Application pipeline finished."
+            sh 'az logout || true'
+        }
+        success {
+            echo "Deployment to AKS complete."
+        }
+        failure {
+            echo "Deployment failed. Please check the logs."
+        }
+    }
+}

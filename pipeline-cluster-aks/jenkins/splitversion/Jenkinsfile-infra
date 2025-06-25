@@ -1,0 +1,63 @@
+pipeline {
+    agent {
+        label 'agent-eiei' 
+    }
+
+    environment {
+        AZURE_SP       = credentials('azure-service-principal')
+        RESOURCE_GROUP = "demo-rg-aks-acr"
+        LOCATION       = "southeastasia"
+        AKS_NAME       = "demoaksclusterte12345"
+        ACR_NAME       = "demoregistrymypracticete12345"
+    }
+
+    stages {
+        
+        stage('Git Checkout') {
+            steps {
+                git url: 'https://github.com/wuttipat6509650716/InternSCBTechX_Practice.git', branch: 'main'
+            }
+        }
+        
+        stage('Azure Login') {
+            steps {
+                sh '''
+                echo "Logging into Azure..."
+                az login --service-principal \
+                         --username "$AZURE_SP_CLIENT_ID" \
+                         --password "$AZURE_SP_CLIENT_SECRET" \
+                         --tenant "$AZURE_SP_TENANT_ID"
+
+                az account set --subscription "$AZURE_SP_SUBSCRIPTION_ID"
+                '''
+            }
+        }
+
+        stage('Terraform Apply') {
+            steps {
+                dir('pipeline-cluster-aks/terraform') {
+                    sh '''
+                        echo "Initializing Terraform..."
+                        terraform init
+
+                        echo "Applying Terraform configuration..."
+                        terraform apply -auto-approve
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo "Infrastructure pipeline finished."
+            sh 'az logout || true'
+        }
+        success {
+            echo "Infrastructure provisioning complete."
+        }
+        failure {
+            echo "Infrastructure provisioning failed."
+        }
+    }
+}
